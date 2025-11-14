@@ -1,0 +1,8 @@
+name: splits_env
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - bte
+  - numpy
