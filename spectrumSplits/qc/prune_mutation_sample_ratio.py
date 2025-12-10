@@ -6,9 +6,10 @@ import numpy as np
 # Command-line argument parsing
 def parse_args():
     parser = argparse.ArgumentParser(description="Process a phylogenetic tree for changepoint detection in mutation/descendant ratios.")
-    parser.add_argument("--input_tree", type=str, default="public-2024-08-06.masked.pb.gz", help="Input tree file (protobuf format)")
+    parser.add_argument("--input_tree", type=str, required=True, help="Input tree file (protobuf format)")
     parser.add_argument("--output_tree", type=str, default="pruned_tree.pb.gz", help="Output tree file (protobuf format)")
     parser.add_argument("--threshold", type=float, default=0, help="Mutation:Leaf Ratio to prune")
+    parser.add_argument("--prune_list", type=str, default="to_prune.txt", help="File to write list of nodes to prune")
     return parser.parse_args()
 
 # Compute the mutation-to-descendant ratio for each node and store it
@@ -44,6 +45,9 @@ def detect_changepoints(node, mutation_ratio, threshold, changepoints, to_prune)
 # Determine the threshold based on the overall distribution of ratios
 def compute_threshold(mutation_ratios):
     ratios = np.array(list(mutation_ratios.values()))
+    print(f"Mean mutation:descendant ratio: {np.mean(ratios)}")
+    print(f"Stddev mutation:descendant ratio: {np.std(ratios)}")
+    print(f"Setting threshold to mean + 2*stddev: {np.mean(ratios) + np.std(ratios) * 2}")
     return np.mean(ratios) + np.std(ratios) * 2
 
 # Function to prune marked nodes from the tree
@@ -76,14 +80,33 @@ def main():
     detect_changepoints(tree.root, mutation_ratio, args.threshold, changepoints, to_prune)
 
     print("#Parent\tchild\ttips\tmutations:tips")
-    for parent_id, child_id, ratio, child_node in changepoints:
-        descendant_tips = get_descendant_tips(child_node)
-        tips_str = ",".join(descendant_tips) if descendant_tips else ""
-        print(f"{parent_id}\t{child_id}\t{tips_str}\t{ratio}")
+    with open(args.prune_list, "w") as f:
+        for parent_id, child_id, ratio, child_node in changepoints:
+            descendant_tips = get_descendant_tips(child_node)
+            tips_str = ",".join(descendant_tips) if descendant_tips else ""
+            print(f"{parent_id}\t{child_id}\t{tips_str}\t{ratio}")
+            #f.write(f"{child_id}\n")
+            for tip in descendant_tips:
+                f.write(f"{tip}\n")
     #print('made it')
-    prune_tree(tree, to_prune)
-    #print('made it 1')
-    tree.save_pb(args.output_tree)
+    '''
+    try:
+        print('here')
+        prune_tree(tree, to_prune)
+        print('there')
+        #tree.save_pb(args.output_tree)
 
+        print('made it 1')
+        
+    except Exception as e:
+        print(f"Error pruning tree: {e}")
+    print('here')
+    #print('done saving')
+    try:
+        tree.save_pb(args.output_tree)
+    except Exception as e:
+        print(f"Error saving tree: {e}")
+    print('made it 2')
+    '''
 if __name__ == "__main__":
     main()

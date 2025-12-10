@@ -8,7 +8,7 @@ import re
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Process a phylogenetic tree to find splits, compute spectra, and mask mutations above/below nodes.")
-    parser.add_argument("--input_tree", type=str, default="public-latest.all.masked.pb.gz", help="Input tree file (protobuf format)")
+    parser.add_argument("--input_tree", type=str, required=True, help="Input tree file (protobuf format)")
     parser.add_argument("--output_tree", type=str, default="masked_sites.pb.gz", help="Output tree file (protobuf format)")
     parser.add_argument("--min_total", type=int, default=500, help="Minimum mutation count to accept a split")
     parser.add_argument("--min_count", type=int, default=50, help="Minimum mutation count to check a site")

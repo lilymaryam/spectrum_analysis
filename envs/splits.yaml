@@ -5,4 +5,8 @@ channels:
   - defaults
 dependencies:
   - bte
+  - scipy
   - numpy
+  - pip
+  - pip:
+      - taxoniumtools
