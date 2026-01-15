@@ -8,6 +8,7 @@ import random
 from multiprocessing import Process
 from collections import defaultdict
 from scipy.stats import chi2_contingency
+from scipy.stats import chi2
 
 # Command-line argument parsing
 def parse_args():
@@ -21,7 +22,8 @@ def parse_args():
     parser.add_argument("--bootstrap_spectra", type=int, default=0, help="Number of bootstrap replicates to attempt in defining spectra")
     parser.add_argument("--nthreads", type=int, default=1, help="Number of threads for concurrent bootstrapping")
     parser.add_argument("--max_branch_length", type=int, default=100000, help="Maximum branch length to include in spectrum calculations")
-    parser.add_argument("--calculate_max_chi", type=bool, default=False, help="Option to calculate maximum chi-square value based on tree size")
+    parser.add_argument("--calculate_min_chi", action="store_true", help="Option to calculate minimum chi-square value based on tree size")
+    #parser.add_argument("--aplha", type=int, default=42, help="Random seed for reproducibility
     return parser.parse_args()
 
 ### mutation positions 
@@ -152,10 +154,28 @@ def write_tips(tips, ntips):
     else:
         return ','.join(random.sample(tips, ntips))
 
-def find_splits(node, min_chi, min_mutations, max_branch_length, weights=None ):
+def calculate_min_chi_value(number_n, traversal):
+    alpha = 0.05
+    p_cutoff=alpha / (number_n * traversal)
+    dof=11
+    min_chi = chi2.ppf(1 - p_cutoff, dof)
+    return min_chi
+
+
+def find_splits(node, min_chi, min_mutations, max_branch_length, weights=None, calculate_min_chi=False, tree_size=None):
     accepted_splits = set({node})
     finalized_splits = set()
+    traversal = 1
+
     while len(accepted_splits) > len(finalized_splits):
+        #may be better to use candidate nodes than total nodes in tree? will check side by side
+        if calculate_min_chi:
+            min_chi = calculate_min_chi_value(tree_size, traversal)
+            traversal += 1
+            print('maybe min chi:', min_chi)
+            
+
+
         print(f"Starting iteration with {len(accepted_splits)-1} accepted splits and {len(finalized_splits)} finalized splits", file=sys.stderr)
         new_split = set()
         #iterate through current accepted splits
@@ -212,7 +232,7 @@ def find_splits(node, min_chi, min_mutations, max_branch_length, weights=None ):
                         above_spectrum_list.append(0)
 
                 chi, p, dof, expected = chi2_contingency([splitroot_spectrum_list,above_spectrum_list])
-
+                print(chi)
                 '''
                 node_spectrum_difference = compute_spectrum_difference(
                     normalize_spectrum(spectrum_dict[node]),
@@ -301,9 +321,10 @@ def main():
     ### read args and tree
     args = parse_args()
     tree = bte.MATree(args.input_tree)
+    nodes = [n for n in tree.breadth_first_expansion()]
 
     ### go through and do the real run without weighting mutations 
-    finalized_splits = find_splits(tree.root, args.min_chi, args.min_mutations, args.max_branch_length )
+    finalized_splits = find_splits(tree.root, args.min_chi, args.min_mutations, args.max_branch_length, calculate_min_chi=args.calculate_min_chi, tree_size=len(nodes) )
     spectra = get_spectra(finalized_splits, args.max_branch_length )
     write_spectra_to_tsv(spectra, args.output_spectrum, args.ntips)
 
