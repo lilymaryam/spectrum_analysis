@@ -19,3 +19,7 @@ this is a fairly complex project consisting of 432 datasets and 2 (currently) pi
 - [ ] figure out if mask sites is reasonable
 - [ ] identify full tree spectra with spectrumsplits parameters that prevent iteration 
 - [ ] run pca on full spectra
+
+
+## Adapting spectrumSplits to viral_usher_trees
+The original spectrumSplits algorithm relies on a chi2 cutoff of 500. This cutoff will not be appropriate for trees of smaller sizes (as all 432 viruses are). To adjust, 
