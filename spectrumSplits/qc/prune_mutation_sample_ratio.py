@@ -43,12 +43,24 @@ def detect_changepoints(node, mutation_ratio, threshold, changepoints, to_prune)
         detect_changepoints(child, mutation_ratio, threshold, changepoints, to_prune)
 
 # Determine the threshold based on the overall distribution of ratios
-def compute_threshold(mutation_ratios):
+def compute_threshold(mutation_ratios, k=3):
     ratios = np.array(list(mutation_ratios.values()))
+    print(sorted(list(ratios)))
+    median = np.median(ratios)
+    abs_deviation = np.abs(ratios - median)
+    mad = np.median(abs_deviation)
+    
+    threshold = median + (k * mad)
+    
+    print(f"Median Ratio: {median:.6f}")
+    print(f"MAD:          {mad:.6f}")
+    print(f"Threshold (k={k}): {threshold:.6f}")
     print(f"Mean mutation:descendant ratio: {np.mean(ratios)}")
     print(f"Stddev mutation:descendant ratio: {np.std(ratios)}")
-    print(f"Setting threshold to mean + 2*stddev: {np.mean(ratios) + np.std(ratios) * 2}")
-    return np.mean(ratios) + np.std(ratios) * 2
+    #print(f"Setting threshold to mean + 2*stddev: {np.mean(ratios) + np.std(ratios) * 2}")
+    print(f"Setting threshold to mean + 2*stddev: {np.mean(ratios) + np.std(ratios) * 3}")
+    return np.mean(ratios) + np.std(ratios) * 3
+    #return threshold
 
 # Function to prune marked nodes from the tree
 def prune_tree(tree, to_prune):
