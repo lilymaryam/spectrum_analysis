@@ -8,6 +8,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Process a phylogenetic tree for changepoint detection in mutation/descendant ratios.")
     parser.add_argument("--input_tree", type=str, required=True, help="Input tree file (protobuf format)")
     parser.add_argument("--output_tree", type=str, default="pruned_tree.pb.gz", help="Output tree file (protobuf format)")
+    #need to fix this
     parser.add_argument("--threshold", type=float, default=0, help="Mutation:Leaf Ratio to prune")
     parser.add_argument("--prune_list", type=str, default="to_prune.txt", help="File to write list of nodes to prune")
     return parser.parse_args()
@@ -58,7 +59,7 @@ def compute_threshold(mutation_ratios, k=3):
     print(f"Mean mutation:descendant ratio: {np.mean(ratios)}")
     print(f"Stddev mutation:descendant ratio: {np.std(ratios)}")
     #print(f"Setting threshold to mean + 2*stddev: {np.mean(ratios) + np.std(ratios) * 2}")
-    print(f"Setting threshold to mean + 2*stddev: {np.mean(ratios) + np.std(ratios) * 3}")
+    print(f"Setting threshold to mean + 3*stddev: {np.mean(ratios) + np.std(ratios) * 3}")
     return np.mean(ratios) + np.std(ratios) * 3
     #return threshold
 
@@ -84,6 +85,7 @@ def main():
     mutation_ratio = {}
     compute_descendants_mutations_ratio(tree.root, mutation_ratio)
 
+    #this is messy af rn. need to fix
     if args.threshold == 0:
         args.threshold = compute_threshold(mutation_ratio)
 

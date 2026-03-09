@@ -262,21 +262,21 @@ def find_splits(node, min_chi, min_mutations, max_branch_length, weights=None, c
         print(f"End of iteration: {len(new_split)} new splits added, {len(accepted_splits) -1} total accepted splits", file=sys.stderr)
     return finalized_splits
 
-def bootstrap_replicate ( tree, replicate, min_chi, min_mutations, ntips, max_branch_length ) :
+def bootstrap_replicate ( tree, replicate, min_chi, min_mutations, ntips, max_branch_length, calculate_min_chi ) :
     print(f"Begining bootstrap no: {replicate}", file=sys.stderr)
     positions = get_positions( tree.root )
     bootstrap_weights = create_bootstrap( positions )
-    finalized_splits_bootstrap = find_splits(tree.root, min_chi, min_mutations, max_branch_length, bootstrap_weights)
+    finalized_splits_bootstrap = find_splits(tree.root, min_chi, min_mutations, max_branch_length, bootstrap_weights, calculate_min_chi, tree_size=len( [n for n in tree.breadth_first_expansion()] ) )
     bootstrap_spectra = get_spectra(finalized_splits_bootstrap, max_branch_length, bootstrap_weights)
     bootstrap_output_file = f"bootstrap_{replicate}_splits_output.tsv"
     write_spectra_to_tsv(bootstrap_spectra, bootstrap_output_file, ntips)
 
 # Define the run_bootstrap function using explicit process creation
-def run_bootstrap(tree, nbootstraps, nthreads, min_chi, min_mutations, max_branch_length):
+def run_bootstrap(tree, nbootstraps, nthreads, min_chi, min_mutations, max_branch_length, calculate_min_chi):
     processes = []
     # Create and start a process for each bootstrap replicate
     for replicate in range(1, nbootstraps + 1):
-        p = Process(target=bootstrap_replicate, args=(tree, replicate, min_chi, min_mutations, 0, max_branch_length))
+        p = Process(target=bootstrap_replicate, args=(tree, replicate, min_chi, min_mutations, 0, max_branch_length, calculate_min_chi))
         processes.append(p)
         p.start()
         # If we have reached the maximum number of threads, wait for them to finish
@@ -331,8 +331,9 @@ def main():
     ### get bootstrap splits if requested
     if ( args.bootstrap_splits > 0 ) :
         print(f"Bootstrapping splits with {args.bootstrap_splits} replicates using {args.nthreads} threads.", file=sys.stderr)
-        run_bootstrap( tree, args.bootstrap_splits, args.nthreads, args.min_chi, args.min_mutations, args.max_branch_length )
+        run_bootstrap( tree, args.bootstrap_splits, args.nthreads, args.min_chi, args.min_mutations, args.max_branch_length, args.calculate_min_chi )
 
+    ###both of these dont need to exist maybe ill remove this 
     ### bootstrap spectrum requested:
     if ( args.bootstrap_spectra > 0 ) :
         print(f"Bootstrapping spectra with {args.bootstrap_spectra} replicates using {args.nthreads} threads.", file=sys.stderr)

@@ -1,3 +1,4 @@
+
 name: splits_env
 channels:
   - bioconda
@@ -10,3 +11,5 @@ dependencies:
   - pip
   - pip:
       - taxoniumtools
+      - scikit-learn
+      - matplotlib

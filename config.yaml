@@ -1,7 +1,21 @@
-data_dir: "/private/groups/corbettlab/lily/reroot_pipeline/viral_usher_trees/trees/"
+data_dir: "/private/groups/corbettlab/lily/viral_usher_trees/trees/"
+just_measles:
+- Measles_morbillivirus
+start_with_these:
+- Bluetongue_virus_1
+- Bluetongue_virus_4
+- Bluetongue_virus_6
+- Bluetongue_virus_8
+- Measles_morbillivirus
 good_viruses:
 - Adeno_associated_virus_1
+- adeno_associated_virus_2
+- Adeno_associated_virus_3
+- Adeno_associated_virus_7
+- African_swine_fever_virus_26544_OG10
+- African_swine_fever_virus_47_Ss_2008
 - African_swine_fever_virus_BA71
+- African_swine_fever_virus_Benin_97_1
 - African_swine_fever_virus_NHV
 - Human_gammaherpesvirus_8
 - Human_metapneumovirus
@@ -12,6 +26,11 @@ good_viruses:
 - Human_papillomavirus_type_6b
 - Bluetongue_virus_8
 - Human_rhinovirus_NAT001
+- Bluetongue_virus_1
+- Bluetongue_virus_4
+- Bluetongue_virus_6
+- Feline_infectious_peritonitis_virus
+- Epizootic_hemorrhagic_disease_virus_serotype_1_strain_New_Jersey_1
 viruses:
 - Adeno_associated_virus_1
 - adeno_associated_virus_2

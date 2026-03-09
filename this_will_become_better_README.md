@@ -3,8 +3,9 @@
 ## Analysis
 ### Preprocessing 
 #### prune errant samples 
-can use `spectrumSplits/qc/prune_mutation_sample_ratio.py` as is used in the original SARS-CoV-2 analysis however, that dataset was much larger. 
+can use `spectrumSplits/qc/prune_mutation_sample_ratio.py` as is used in the original SARS-CoV-2 analysis however, that dataset was much larger. for this reason, these parameters are still being tweaked and automated
 
+#### just kidding don't do this
 `scripts/prune_samples.py` focuses on identifying samples that are outliers in terms of their distance to the closest 10% of samples in the dataset. running this script can be time consuming, however there are parameters that can be adjusted to improve runtime (i.e. size of dataset to compare to, anything else?)
 
 #### mask aberrant mutations 
@@ -29,3 +30,6 @@ then `python3 scripts/create_json.py --metadata_file {path to the metadata file 
 
 **Side note: i get this error when i run the create_json.py script so that may need updating at some point. 
 `/private/groups/corbettlab/lily/spectrumSplits/scripts/create_json.py:7: FutureWarning: The 'delim_whitespace' keyword in pd.read_csv is deprecated and will be removed in a future version. Use ``sep='\s+'`` instead df = pd.read_csv(metadata_file, delim_whitespace=True)`**
+
+after running these other commands, spectra changes on the tree can be visualized with `usher_to_taxonium --input {path to processed tree} --output {path to taxonium ready jsonl.gz} --metadata {path to metadata file to be used for visualization} -j {path to json config file from previous step} --columns SepctrumRoot,AC,AG,AT,CA,CG,CT,GA,GC,GT` the columnns are given to you exactly as they appear in the metadata . fix typo asap . 
+

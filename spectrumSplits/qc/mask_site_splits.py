@@ -6,6 +6,7 @@ from collections import defaultdict
 from multiprocessing import Process, Manager
 import re
 import numpy as np
+from scipy.stats import chi2
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Process a phylogenetic tree to find splits, compute spectra, and mask mutations above/below nodes.")
@@ -16,7 +17,7 @@ def parse_args():
     parser.add_argument("--nthreads", type=int, default=100, help="Number of concurrent threads for processing")
     #it might be maximum chi?
     parser.add_argument("--mask_chi", type=float, default=5000, help="Minimum chi2 value for masking mutation below/above a node")
-    parser.add_argument("--calculate_min_chi", action="store_true", help="Calculate minimum chi-square value based on tree size")
+    parser.add_argument("--calculate_max_chi", action="store_true", help="Calculate minimum chi-square value based on tree size")
     parser.add_argument("--calculate_min_mutations", action="store_true", help="If minimum count of mutations is unknown, default is likely too high. Flag this to estimate a reasonable minimum count based on tree size")
     return parser.parse_args()
 
@@ -99,7 +100,6 @@ def find_site_splits(position, mutation_count, total_mutations, root, args, mask
                 [total_descendant_mutations - mutation_occurrences, mutation_occurrences]
             ]
             chi2, p, dof, expected = chi2_contingency(observed)
-            print('chis look like this',chi2)
             #i need to adjust max chi threshold
             if chi2 > max_chi:
                 max_chi = chi2
@@ -185,6 +185,13 @@ def calculate_minimum_mutation_count(mutation_counts):
     min_count = max(10, cutoff_75th)
     return min_count 
 
+def calculate_max_chi(n, s):
+    alpha = 0.05
+    p = alpha / (n * s)  # Bonferroni correction
+    max_chi = chi2.ppf(1 - p, df=1)
+    return max_chi
+
+
 def main():
     args = parse_args()
     tree = bte.MATree(args.input_tree)
@@ -198,6 +205,16 @@ def main():
         min_count = calculate_minimum_mutation_count(mutation_counts)
     else:
         min_count = args.min_count
+    if args.calculate_max_chi:
+        number_of_nodes = len(nodes)
+        number_of_sites = len(mutation_counts)
+        args.mask_chi = calculate_max_chi(number_of_nodes, number_of_sites)
+        print(f"Calculated max chi2 threshold for masking: {args.mask_chi}", file=sys.stderr)
+    
+    
+    
+
+
 
     mutation_counts = {k: v for k, v in mutation_counts.items() if v >= min_count}
     
@@ -231,7 +248,7 @@ def main():
         # COME BACK TO THIS ON FRI!!!!!!! 1/16
         print(f"Mutations checked:", file=sys.stderr)
         for pos, chi, node_id, direction in sorted(chi_list, key=lambda x: -x[1]):
-            print(f"{pos}\t{chi}\t{node_id}\t{direction}", file=sys.stderr)
+            print(f"{pos}\t{chi}\t{mutation_counts.get(pos, 0)}\t{node_id}\t{direction}", file=sys.stderr)
 
         if args.mask_chi > 0 and (len(mask_below_dict) > 0 or len(mask_above_dict) > 0):
             print(f"Masking mutations: below={len(mask_below_dict)}, above={len(mask_above_dict)}", file=sys.stderr)
