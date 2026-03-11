@@ -1,0 +1,6 @@
+.snakemake/
+check.pb
+data/
+logs/
+pruned/
+redflags/

@@ -101,7 +101,7 @@ def main():
             print(f"{parent_id}\t{child_id}\t{tips_str}\t{ratio}")
             #f.write(f"{child_id}\n")
             for tip in descendant_tips:
-                f.write(f"{tip}\n")
+                f.write(f"{tip}\t{ratio}\n")
     #print('made it')
     '''
     try:

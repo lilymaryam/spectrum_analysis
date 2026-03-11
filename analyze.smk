@@ -59,9 +59,17 @@ rule matUtils:
         if (( $(echo "$ratio > 0.1" | bc -l) )); then
             echo "More than 10% samples to be pruned, exiting." > redflags/{wildcards.virus}.txt
         fi
-        matUtils extract -i {input.tree} -s  {input.prunelist} -p -o {output.pruned_tree} -T 1 >> {log} 2>&1
+        if [ ! -s {input.prunelist} ]; then
+            echo "Prunelist is empty, copying input tree to output." >> {log}
+            cp {input.tree} {output.pruned_tree}
+        else
+            matUtils extract -i {input.tree} -s {input.prunelist} -p -o {output.pruned_tree} -T 1 >> {log} 2>&1
+        fi
         matUtils summary -i {output.pruned_tree} -m data/{wildcards.virus}_muts.txt -T 1
         """
+        
+
+
 
 '''
 rule look_for_weirdmuts:
