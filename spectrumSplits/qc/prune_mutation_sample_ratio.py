@@ -9,7 +9,7 @@ def parse_args():
     parser.add_argument("--input_tree", type=str, required=True, help="Input tree file (protobuf format)")
     parser.add_argument("--output_tree", type=str, default="pruned_tree.pb.gz", help="Output tree file (protobuf format)")
     #need to fix this
-    parser.add_argument("--threshold", type=float, default=0, help="Mutation:Leaf Ratio to prune")
+    parser.add_argument("--threshold", type=float, default=0, help="Mutation:Leaf Ratio to prune. Note: If no value is set, or if value is set to 0, script will calculate best threshold. Recommended if unsure what mutation ratios are outliers.")
     parser.add_argument("--prune_list", type=str, default="to_prune.txt", help="File to write list of nodes to prune")
     return parser.parse_args()
 
@@ -46,16 +46,20 @@ def detect_changepoints(node, mutation_ratio, threshold, changepoints, to_prune)
 # Determine the threshold based on the overall distribution of ratios
 def compute_threshold(mutation_ratios, k=3):
     ratios = np.array(list(mutation_ratios.values()))
-    print(sorted(list(ratios)))
-    median = np.median(ratios)
-    abs_deviation = np.abs(ratios - median)
-    mad = np.median(abs_deviation)
     
-    threshold = median + (k * mad)
+    # Use Median Absolute Deviation (MAD) to set a robust threshold
+    #NOTE: this doesn't work. code is here for posterity but mean + 3*stddev works much better
+    #median = np.median(ratios)
+    #abs_deviation = np.abs(ratios - median)
+    #mad = np.median(abs_deviation)  
+    #threshold = median + (k * mad)
+    #print(f"Median Ratio: {median:.6f}")
+    #print(f"MAD:          {mad:.6f}")
+    #print(f"Threshold (k={k}): {threshold:.6f}")
     
-    print(f"Median Ratio: {median:.6f}")
-    print(f"MAD:          {mad:.6f}")
-    print(f"Threshold (k={k}): {threshold:.6f}")
+    #This system is working to calculate mutation thresholds for each MAT
+    #The original script for SARS-CoV-2 used mean + 2*stddev, which is better for larger datasets
+    #But prunes too much for smaller datasets, 3*stddev is better for viral_usher_trees
     print(f"Mean mutation:descendant ratio: {np.mean(ratios)}")
     print(f"Stddev mutation:descendant ratio: {np.std(ratios)}")
     #print(f"Setting threshold to mean + 2*stddev: {np.mean(ratios) + np.std(ratios) * 2}")
@@ -78,6 +82,10 @@ def get_descendant_tips(node):
         tips.extend(get_descendant_tips(child))
     return tips
 
+#Original version of script prunes internal nodes from tree, however this version outputs a list of samples to prune, which can be used to prune the tree in a separate step.
+#This version is compatible with analyze.smk which will use matUtils to prune the tree based on the list of samples to prune. 
+#This is because pruning internal nodes can potentially drastically change the tree and may also cause errors in BTE 
+
 def main():
     args = parse_args()
     tree = bte.MATree(args.input_tree)
@@ -85,7 +93,8 @@ def main():
     mutation_ratio = {}
     compute_descendants_mutations_ratio(tree.root, mutation_ratio)
 
-    #this is messy af rn. need to fix
+    #If threshold is set to 0 (default), script will compute a threshold 
+    # based on the distribution of mutation:descendant ratios across the tree.
     if args.threshold == 0:
         args.threshold = compute_threshold(mutation_ratio)
 
@@ -93,34 +102,19 @@ def main():
     to_prune = set()
     detect_changepoints(tree.root, mutation_ratio, args.threshold, changepoints, to_prune)
 
+    #printed output will be sent to logs in analyze.smk
     print("#Parent\tchild\ttips\tmutations:tips")
+    #down stream analysis will be conducted on the file created 
     with open(args.prune_list, "w") as f:
         for parent_id, child_id, ratio, child_node in changepoints:
             descendant_tips = get_descendant_tips(child_node)
             tips_str = ",".join(descendant_tips) if descendant_tips else ""
             print(f"{parent_id}\t{child_id}\t{tips_str}\t{ratio}")
+            #child_id is the internal node which is suggested for pruning. Pruning internal nodes instead of leaves
+            #may cause errors. Pruning samples with matUtils will avoid errors
             #f.write(f"{child_id}\n")
             for tip in descendant_tips:
-                f.write(f"{tip}\t{ratio}\n")
-    #print('made it')
-    '''
-    try:
-        print('here')
-        prune_tree(tree, to_prune)
-        print('there')
-        #tree.save_pb(args.output_tree)
-
-        print('made it 1')
-        
-    except Exception as e:
-        print(f"Error pruning tree: {e}")
-    print('here')
-    #print('done saving')
-    try:
-        tree.save_pb(args.output_tree)
-    except Exception as e:
-        print(f"Error saving tree: {e}")
-    print('made it 2')
-    '''
+                f.write(f"{tip}\t{ratio}\t{args.threshold}\n")
+    
 if __name__ == "__main__":
     main()

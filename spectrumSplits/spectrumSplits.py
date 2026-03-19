@@ -113,9 +113,7 @@ def get_spectra(finalized_splits, max_branch_length, weights=None):
     return final_spectra
 
 def write_spectra_to_tsv(spectra_dict, filename, ntips):
-    all_keys = set()
-    for spectrum in spectra_dict.values():
-        all_keys.update(spectrum.keys())
+    all_keys = {"AC", "AG", "AT", "CA", "CG", "CT", "GA", "GC", "GT", "TA", "TC", "TG"}
     sorted_keys = sorted(all_keys)
     with open(filename, "w", newline="") as file:
         writer = csv.writer(file, delimiter='\t')

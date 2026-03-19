@@ -12,6 +12,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Process a phylogenetic tree to find splits, compute spectra, and mask mutations above/below nodes.")
     parser.add_argument("--input_tree", type=str, required=True, help="Input tree file (protobuf format)")
     parser.add_argument("--output_tree", type=str, default="masked_sites.pb.gz", help="Output tree file (protobuf format)")
+    #
+    #parser.add_argument("--mutation_list_output", required=False, help="If desired, output file listing finaled masked mutations.")
     parser.add_argument("--min_total", type=int, default=500, help="Minimum mutation count to accept a split")
     parser.add_argument("--min_count", type=int, default=50, help="Minimum mutation count to check a site")
     parser.add_argument("--nthreads", type=int, default=100, help="Number of concurrent threads for processing")
@@ -105,12 +107,9 @@ def find_site_splits(position, mutation_count, total_mutations, root, args, mask
                 max_chi = chi2
                 max_node = node
                 mask_direction = 'below' if rate_below >= rate_above else 'above'
-
         return mutation_occurrences, total_descendant_mutations
 
     traverse_and_count(root)
-
-    #i dont understand this part
     if max_chi > args.mask_chi:
         if mask_direction == 'below':
             current = mask_below_dict.get(max_node.id, [])
@@ -120,7 +119,6 @@ def find_site_splits(position, mutation_count, total_mutations, root, args, mask
             current = mask_above_dict.get(max_node.id, [])
             current.append(position)
             mask_above_dict[max_node.id] = current
-
     chi_list.append((position, max_chi, max_node.id, mask_direction))
 
 # ------------------ Masking logic ------------------
@@ -136,7 +134,6 @@ def mask_mutations(root, mask_below_dict, mask_above_dict):
         for child in node.children:
             mask_descendants(child, positions_to_mask)
 
-    # Helper to mask everything except subtree of a node
     # Helper to mask everything except subtree of a node
     def mask_above(node, target_nodes):
         for target_id, positions in target_nodes.items():
@@ -177,7 +174,6 @@ def find_node(node, target_id):
 def calculate_minimum_mutation_count(mutation_counts):
     '''
     Estimate a reasonable minimum mutation count, where minimum is always 10 but may be high based on mutation count distribution.
-
     *Note 10 may be too low, revisit later if needed
     '''
     mutations = np.array(list(mutation_counts.values()))
@@ -210,17 +206,16 @@ def main():
         number_of_sites = len(mutation_counts)
         args.mask_chi = calculate_max_chi(number_of_nodes, number_of_sites)
         print(f"Calculated max chi2 threshold for masking: {args.mask_chi}", file=sys.stderr)
-    
-    
-    
-
-
 
     mutation_counts = {k: v for k, v in mutation_counts.items() if v >= min_count}
     
     iteration = 1
     #go throught positions of interest, find splits, mask mutations above/below nodes
     while len(mutation_counts) > 0:
+        #subsequent iterations will be more targeted, only looking at positions that were 
+        # masked in previous iteration, and their counts will be lower, so it is possible 
+        # that more mutations will be masked in subsequent iterations, but the number 
+        # of positions checked will be much lower, so it should still be efficient
         print(f"Finding splits. Iteration {iteration}", file=sys.stderr)
 
         manager = Manager()
@@ -230,7 +225,11 @@ def main():
 
         processes = []
         for pos, count in mutation_counts.items():
-            print(f"\tPosition: {pos}\tOccurrences: {count}", file=sys.stderr)
+            #this is all of the mutations that occur more than min_count times, 
+            #these ones are checked for unlikely distributions of mutations, and 
+            # if they are aberrant, they are masked above or below the node where they are aberrant
+            #print(f"\tPosition: {pos}\tOccurrences: {count}", file=sys.stderr)
+            
             #this will look at all positions across all nodes in parallel
             p = run_in_process(tree, pos, count, total_mutations, args, mask_below_dict, mask_above_dict, chi_list)
             processes.append(p)
@@ -245,13 +244,19 @@ def main():
         for proc in processes:
             proc.join()
         
-        # COME BACK TO THIS ON FRI!!!!!!! 1/16
-        print(f"Mutations checked:", file=sys.stderr)
-        for pos, chi, node_id, direction in sorted(chi_list, key=lambda x: -x[1]):
-            print(f"{pos}\t{chi}\t{mutation_counts.get(pos, 0)}\t{node_id}\t{direction}", file=sys.stderr)
-
+        #chi list is a list of all mutations that were checked, dont need to print all 
+        #print(f"Mutations checked:", file=sys.stderr)
+        #for pos, chi, node_id, direction in sorted(chi_list, key=lambda x: -x[1]):
+        #    print(f"{pos}\t{chi}\t{mutation_counts.get(pos, 0)}\t{node_id}\t{direction}", file=sys.stderr)
+        #print(sorted_chi_list)
         if args.mask_chi > 0 and (len(mask_below_dict) > 0 or len(mask_above_dict) > 0):
             print(f"Masking mutations: below={len(mask_below_dict)}, above={len(mask_above_dict)}", file=sys.stderr)
+            #for node_id, positions in mask_below_dict.items():
+            #print(mask_below_dict)
+            for pos, chi, node_id, direction in sorted(chi_list, key=lambda x: -x[1]):
+                if chi > args.mask_chi:
+                    print(f"{pos}\t{chi}\t{mutation_counts.get(pos, 0)}\t{node_id}\t{direction}", file=sys.stderr)
+
             mask_mutations(tree.root, mask_below_dict, mask_above_dict)
 
             # Recount mutations after masking
@@ -261,7 +266,8 @@ def main():
             masked_positions = set(pos for positions in list(mask_below_dict.values()) + list(mask_above_dict.values()) for pos in positions)
             mutation_counts = {k: v for k, v in mutation_counts.items() if k in masked_positions}
 
-            print(f"Sites to recheck: {len(mutation_counts)}", file=sys.stderr)
+            #i dont think this math is correct
+            #print(f"Sites to recheck: {len(mutation_counts)}", file=sys.stderr)
         else:
             mutation_counts = {}
 

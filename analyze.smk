@@ -4,14 +4,14 @@ configfile: "config.yaml"
 
 rule all:
     input:
-        expand("pruned/{virus}_final_pruned.jsonl.gz", virus=config["viruses"])
-        #"pruned/Influenza_A_virus_A_California_07_2009_H1N1_4_final_pruned.jsonl.gz"
-        #expand("pruned/{virus}_final_pruned.jsonl.gz", virus=config["good_viruses"])
-        #
-        #expand("reports/{virus}_split_report.txt", virus=config["good_viruses"])
-        #expand("reports/{virus}_split_report.txt", virus=config["just_measles"]), expand("pruned/{virus}_final_pruned.jsonl.gz", virus=config["just_measles"])
-        #expand("reports/{virus}_split_report.txt", virus=config["good_viruses"])
-        #expand("pruned/{virus}_final_pruned.jsonl.gz", virus=config["good_viruses"])
+        expand("reports/{virus}_single_split_report.txt", virus=config["viruses"]),"reports/single_split_pca.png"
+        #expand("reports/{virus}_single_split_report.txt", virus=config["viruses"])
+        #expand("pruned/{virus}_final_pruned_masked.jsonl.gz", virus=config["viruses"])
+        #"pruned/Measles_morbillivirus_final_pruned_masked.jsonl.gz"
+        #expand("pruned/{virus}_pruned_masked.pb.gz", virus=config["viruses"])
+        
+        #do pruning only
+        #expand("pruned/{virus}_final_pruned.jsonl.gz", virus=config["viruses"])
 
 rule prune:
     input:
@@ -38,6 +38,8 @@ rule matUtils:
         tree=os.path.join(config["data_dir"], "{virus}/optimized.pb.gz"), prunelist="pruned/{virus}_to_prune.txt"
     output:
         pruned_tree="pruned/{virus}_pruned.pb.gz", muts="data/{virus}_muts.txt"
+    threads:
+        config["threads"]
     log:
         "logs/{virus}_matutils.log"
     resources:
@@ -63,9 +65,9 @@ rule matUtils:
             echo "Prunelist is empty, copying input tree to output." >> {log}
             cp {input.tree} {output.pruned_tree}
         else
-            matUtils extract -i {input.tree} -s {input.prunelist} -p -o {output.pruned_tree} -T 1 >> {log} 2>&1
+            matUtils extract -i {input.tree} -s {input.prunelist} -p -o {output.pruned_tree} -T {threads} >> {log} 2>&1
         fi
-        matUtils summary -i {output.pruned_tree} -m data/{wildcards.virus}_muts.txt -T 1
+        matUtils summary -i {output.pruned_tree} -m data/{wildcards.virus}_muts.txt -T {threads}
         """
         
 
@@ -85,13 +87,14 @@ rule look_for_weirdmuts:
         """
 '''
 
-rule convert:
+#potentially can turn off this rule at some point 
+rule convert_pruned:
     input:
         pruned_tree="pruned/{virus}_pruned.pb.gz"
     output:
         final_tree="pruned/{virus}_final_pruned.jsonl.gz"
     log:
-        "logs/{virus}_convert.log"
+        "logs/{virus}_convert_pruned.log"
     resources:
         mem_mb=4000,
         runtime=720,
@@ -107,6 +110,8 @@ rule mask_muts:
         pruned_tree="pruned/{virus}_pruned.pb.gz"
     output:
         masked_tree="pruned/{virus}_pruned_masked.pb.gz"
+    threads:
+        config["threads"]
     log:
         "logs/{virus}_mask.log"
     resources:
@@ -116,16 +121,35 @@ rule mask_muts:
         slurm_extra="--export=ALL",
     shell:
         """
-        python3 spectrumSplits/qc/mask_site_splits.py --input_tree {input.pruned_tree} --output_tree {output.masked_tree} > {log} 2>&1
+        python3 spectrumSplits/qc/mask_site_splits.py --input_tree {input.pruned_tree} --output_tree {output.masked_tree} --calculate_max_chi --calculate_min_mutations --nthreads {threads} > {log} 2>&1
         """
 
-rule check_splits:
+rule convert_masked:
     input:
         masked_tree="pruned/{virus}_pruned_masked.pb.gz"
     output:
-        split_report="reports/{virus}_split_report.txt"
+        final_tree="pruned/{virus}_final_pruned_masked.jsonl.gz"
     log:
-        "logs/{virus}_check_splits.log"
+        "logs/{virus}_convert_masked.log"
+    resources:
+        mem_mb=4000,
+        runtime=720,
+        slurm_partition="medium",
+        slurm_extra="--export=ALL",
+    shell:
+        """
+        usher_to_taxonium -i {input.masked_tree} -t {wildcards.virus} -o {output.final_tree} > {log} 2>&1
+        """
+
+rule check_single_split_spectra:
+    input:
+        masked_tree="pruned/{virus}_pruned_masked.pb.gz"
+    output:
+        split_report="reports/{virus}_single_split_report.txt"
+    threads:
+        config["threads"]
+    log:
+        "logs/{virus}_check_single_split_spectra.log"
     resources:
         mem_mb=4000,
         runtime=720,
@@ -134,6 +158,24 @@ rule check_splits:
     shell:
         """
         mkdir -p reports
-        python3 spectrumSplits/spectrumSplits/spectrumSplits.py --input_tree {input.masked_tree} --output_spectrum {output.split_report} > {log} 2>&1
+        python3 spectrumSplits/spectrumSplits.py --input_tree {input.masked_tree} --output_spectrum {output.split_report} --min_chi 100000 > {log} 2>&1
+        """
+
+rule single_split_pca:
+    input:
+        expand("reports/{virus}_single_split_report.txt", virus=config["viruses"])
+    output:
+        pca_plot="reports/single_split_pca.png"
+    log:
+        "logs/single_split_pca.log"
+    resources:
+        mem_mb=4000,
+        runtime=720,
+        slurm_partition="medium",
+        slurm_extra="--export=ALL",
+    shell:
+        """
+        python3 scripts/combine_single_splits.py > logs/combine_single_splits.log 2>&1
+        python3 spectrumSplits/misc/PCA.py --input reports/combined_single_splits.txt --output {output.pca_plot} > {log} 2>&1
         """
         
