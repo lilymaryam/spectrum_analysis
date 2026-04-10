@@ -1,4 +1,6 @@
-data_dir: "/storage1/lily/spectra_evolution/viral_usher_trees/trees/"
+data_dir: "/private/groups/corbettlab/lily/viral_usher_trees/trees/"
+bootstrap_replicates: 1000
+threads: 4
 just_measles:
 - Measles_morbillivirus
 start_with_these:

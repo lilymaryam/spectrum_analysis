@@ -4,7 +4,7 @@ import pandas as pd
 
 def parse_metadata_file(metadata_file):
     # Read the metadata file into a pandas DataFrame
-    df = pd.read_csv(metadata_file, delim_whitespace=True)
+    df = pd.read_csv(metadata_file, sep='\t')
     
     # Extract the min and max values for each spectrum column (columns 3 onwards)
     spectrum_columns = df.columns[2:]  # From 3rd column to the end

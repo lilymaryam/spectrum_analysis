@@ -4,14 +4,14 @@ configfile: "config.yaml"
 
 rule all:
     input:
-        expand("reports/{virus}_bootstrap_report.tsv", virus=config["viruses"])
+        expand("visuals/{virus}_split_visualization.jsonl.gz", virus=config["viruses"])
+        #expand("reports/{virus}_bootstrap_report.tsv", virus=config["viruses"])
         #"reports/{virus}_bootstrap_report.txt
         #expand("reports/{virus}_multi_split_report.txt", virus=config["viruses"])
         #expand("reports/{virus}_single_split_report.txt", virus=config["viruses"])
         #expand("pruned/{virus}_final_pruned_masked.jsonl.gz", virus=config["viruses"])
         #"pruned/Measles_morbillivirus_final_pruned_masked.jsonl.gz"
         #expand("pruned/{virus}_pruned_masked.pb.gz", virus=config["viruses"])
-        
         #do pruning only
         #expand("pruned/{virus}_final_pruned.jsonl.gz", virus=config["viruses"])
 
@@ -229,4 +229,25 @@ rule check_bootstraps:
         """
         mkdir -p reports
         python3 spectrumSplits/misc/process_bootstraps.py --bootstrap_directory {input.bootstrap_directory} --spectrum_file reports/{wildcards.virus}_multi_split_report.txt --output_file {output.bootstrap_report} --input_tree {input.input_tree} > {log} 2>&1
+        """
+
+
+rule visualize_splits:
+    input:
+        masked_tree="pruned/{virus}_pruned_masked.pb.gz", spectrum_file="reports/{virus}_multi_split_report.txt"
+    output:
+        metadata="visuals/{virus}_metadata.tsv", json="visuals/{virus}_metadata.json", split_viz="visuals/{virus}_split_visualization.jsonl.gz"
+    log:
+        "logs/{virus}_visualize_splits.log"
+    resources:
+        mem_mb=4000,
+        runtime=720,
+        slurm_partition="medium",
+        #slurm_extra="--export=ALL",
+    shell:
+        """
+        mkdir -p visuals
+        python3 spectrumSplits/misc/annotate_nodes.py --spectrum_file {input.spectrum_file} --input_tree {input.masked_tree} --metadata_output {output.metadata}
+        python3 scripts/create_json.py --metadata_file {output.metadata} --output_file {output.json}
+        usher_to_taxonium --input {input.masked_tree} --output {output.split_viz}  --metadata {output.metadata}  -j {output.json} --columns SpectrumRoot,AC,AG,AT,CA,CG,CT,GA,GC,GT
         """

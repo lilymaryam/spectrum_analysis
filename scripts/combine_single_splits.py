@@ -12,6 +12,7 @@ This script:
 import pandas as pd
 import glob
 import os
+import argparse
 from pathlib import Path
 
 def combine_single_splits(reports_dir, output_file):
@@ -68,10 +69,9 @@ def combine_single_splits(reports_dir, output_file):
     print(f"Columns: {list(combined_df.columns[:10])}... (showing first 10)")
 
 if __name__ == "__main__":
-    # Set paths
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.dirname(script_dir)
-    reports_dir = os.path.join(project_root, "reports")
-    output_file = os.path.join(reports_dir, "combined_single_splits.txt")
+    parser = argparse.ArgumentParser(description="Combine single split report files into a matrix")
+    parser.add_argument("--reports-dir", required=True, help="Path to reports directory")
+    parser.add_argument("--output", required=True, help="Output file path")
+    args = parser.parse_args()
     
-    combine_single_splits(reports_dir, output_file)
+    combine_single_splits(args.reports_dir, args.output)

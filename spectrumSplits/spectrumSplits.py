@@ -5,6 +5,7 @@ import csv
 import random
 import argparse
 import random
+import os
 from multiprocessing import Process
 from collections import defaultdict
 from scipy.stats import chi2_contingency
@@ -22,6 +23,7 @@ def parse_args():
     parser.add_argument("--bootstrap_spectra", type=int, default=0, help="Number of bootstrap replicates to attempt in defining spectra")
     parser.add_argument("--nthreads", type=int, default=1, help="Number of threads for concurrent bootstrapping")
     parser.add_argument("--max_branch_length", type=int, default=100000, help="Maximum branch length to include in spectrum calculations")
+    parser.add_argument("--bootstrap_dir", type=str, default=".", help="Directory to write bootstrap output files")
     parser.add_argument("--calculate_min_chi", action="store_true", help="Option to calculate minimum chi-square value based on tree size")
     #parser.add_argument("--aplha", type=int, default=42, help="Random seed for reproducibility
     return parser.parse_args()
@@ -123,7 +125,9 @@ def write_spectra_to_tsv(spectra_dict, filename, ntips):
             tips = get_tips( spectra_dict.keys(), node )
             if ntips > 0 :
                 normalized_spectrum = normalize_spectrum(spectrum)
-                row = [node.id] + [sum(spectrum.values())] + [len(tips)] + [float(sum(spectrum.values()))/float(len(tips))] + [normalized_spectrum.get(key, 0) for key in sorted_keys] + [write_tips( tips, ntips )] 
+                #divide by zero error
+                #row = [node.id] + [sum(spectrum.values())] + [len(tips)] + [float(sum(spectrum.values()))/float(len(tips))] + [normalized_spectrum.get(key, 0) for key in sorted_keys] + [write_tips( tips, ntips )] 
+                row = [node.id] + [sum(spectrum.values())] + [len(tips)] + [float(sum(spectrum.values()))/float(len(tips)) if len(tips) > 0 else "NA"] + [normalized_spectrum.get(key, 0) for key in sorted_keys] + [write_tips( tips, ntips )] 
                 writer.writerow(row)
             else:
                 normalized_spectrum = normalize_spectrum(spectrum)
@@ -260,21 +264,25 @@ def find_splits(node, min_chi, min_mutations, max_branch_length, weights=None, c
         print(f"End of iteration: {len(new_split)} new splits added, {len(accepted_splits) -1} total accepted splits", file=sys.stderr)
     return finalized_splits
 
-def bootstrap_replicate ( tree, replicate, min_chi, min_mutations, ntips, max_branch_length, calculate_min_chi ) :
+def bootstrap_replicate ( tree, replicate, min_chi, min_mutations, ntips, max_branch_length, calculate_min_chi, bootstrap_dir="." ) :
     print(f"Begining bootstrap no: {replicate}", file=sys.stderr)
     positions = get_positions( tree.root )
     bootstrap_weights = create_bootstrap( positions )
     finalized_splits_bootstrap = find_splits(tree.root, min_chi, min_mutations, max_branch_length, bootstrap_weights, calculate_min_chi, tree_size=len( [n for n in tree.breadth_first_expansion()] ) )
     bootstrap_spectra = get_spectra(finalized_splits_bootstrap, max_branch_length, bootstrap_weights)
-    bootstrap_output_file = f"bootstrap_{replicate}_splits_output.tsv"
+    bootstrap_output_file = os.path.join(bootstrap_dir, f"bootstrap_{replicate}_splits_output.tsv")
     write_spectra_to_tsv(bootstrap_spectra, bootstrap_output_file, ntips)
 
 # Define the run_bootstrap function using explicit process creation
-def run_bootstrap(tree, nbootstraps, nthreads, min_chi, min_mutations, max_branch_length, calculate_min_chi):
+def run_bootstrap(tree, nbootstraps, nthreads, min_chi, min_mutations, max_branch_length, calculate_min_chi, bootstrap_dir="."):
+    # Create bootstrap directory if it doesn't exist
+    if bootstrap_dir != "." and not os.path.exists(bootstrap_dir):
+        os.makedirs(bootstrap_dir)
+    
     processes = []
     # Create and start a process for each bootstrap replicate
     for replicate in range(1, nbootstraps + 1):
-        p = Process(target=bootstrap_replicate, args=(tree, replicate, min_chi, min_mutations, 0, max_branch_length, calculate_min_chi))
+        p = Process(target=bootstrap_replicate, args=(tree, replicate, min_chi, min_mutations, 0, max_branch_length, calculate_min_chi, bootstrap_dir))
         processes.append(p)
         p.start()
         # If we have reached the maximum number of threads, wait for them to finish
@@ -288,20 +296,24 @@ def run_bootstrap(tree, nbootstraps, nthreads, min_chi, min_mutations, max_branc
 
     print(f"Bootstrap completed with {nbootstraps} replicates using {nthreads} threads.")
 
-def bootstrap_spectrum_replicate( tree, replicate, splits, max_branch_lengths):
+def bootstrap_spectrum_replicate( tree, replicate, splits, max_branch_lengths, bootstrap_dir="."):
     print(f"Begining bootstrap no: {replicate}", file=sys.stderr)
     positions = get_positions( tree.root )
     bootstrap_weights = create_bootstrap( positions )
     bootstrap_spectra = get_spectra( splits, max_branch_lengths, bootstrap_weights)
-    bootstrap_output_file = f"bootstrap_{replicate}_spectra_output.tsv"
+    bootstrap_output_file = os.path.join(bootstrap_dir, f"bootstrap_{replicate}_spectra_output.tsv")
     write_spectra_to_tsv(bootstrap_spectra, bootstrap_output_file, 0)
 
 ### ok, botostrap by spectrum
-def run_bootstrap_spectra( tree, nbootstraps, nthreads, splits, max_branch_lengths ) :
+def run_bootstrap_spectra( tree, nbootstraps, nthreads, splits, max_branch_lengths, bootstrap_dir="." ) :
+    # Create bootstrap directory if it doesn't exist
+    if bootstrap_dir != "." and not os.path.exists(bootstrap_dir):
+        os.makedirs(bootstrap_dir)
+    
     processes = []
     # Create and start a process for each bootstrap replicate
     for replicate in range(1, nbootstraps + 1):
-        p = Process(target=bootstrap_spectrum_replicate, args=(tree, replicate, splits, max_branch_lengths))
+        p = Process(target=bootstrap_spectrum_replicate, args=(tree, replicate, splits, max_branch_lengths, bootstrap_dir))
         processes.append(p)
         p.start()
         # If we have reached the maximum number of threads, wait for them to finish
@@ -329,13 +341,13 @@ def main():
     ### get bootstrap splits if requested
     if ( args.bootstrap_splits > 0 ) :
         print(f"Bootstrapping splits with {args.bootstrap_splits} replicates using {args.nthreads} threads.", file=sys.stderr)
-        run_bootstrap( tree, args.bootstrap_splits, args.nthreads, args.min_chi, args.min_mutations, args.max_branch_length, args.calculate_min_chi )
+        run_bootstrap( tree, args.bootstrap_splits, args.nthreads, args.min_chi, args.min_mutations, args.max_branch_length, args.calculate_min_chi, args.bootstrap_dir )
 
     ###both of these dont need to exist maybe ill remove this 
     ### bootstrap spectrum requested:
     if ( args.bootstrap_spectra > 0 ) :
         print(f"Bootstrapping spectra with {args.bootstrap_spectra} replicates using {args.nthreads} threads.", file=sys.stderr)
-        run_bootstrap_spectra( tree, args.bootstrap_spectra, args.nthreads, finalized_splits, args.max_branch_length )
+        run_bootstrap_spectra( tree, args.bootstrap_spectra, args.nthreads, finalized_splits, args.max_branch_length, args.bootstrap_dir )
 
 if __name__ == "__main__":
     main()

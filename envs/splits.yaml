@@ -1,4 +1,3 @@
-
 name: splits_env
 channels:
   - bioconda
@@ -13,3 +12,5 @@ dependencies:
       - taxoniumtools
       - scikit-learn
       - matplotlib
+      - snakemake=9.12.0 
+      - snakemake-executor-plugin-slurm=2.5.4
