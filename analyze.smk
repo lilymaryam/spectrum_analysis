@@ -4,7 +4,8 @@ configfile: "config.yaml"
 
 rule all:
     input:
-        expand("visuals/{virus}_split_visualization.jsonl.gz", virus=config["viruses"])
+        expand("visuals/{virus}_split_visualization.jsonl.gz", virus=config["viruses"]),
+        #expand("pruned/{virus}_pruned_masked.pb.gz", virus=config["viruses"][:100])
         #expand("reports/{virus}_bootstrap_report.tsv", virus=config["viruses"])
         #"reports/{virus}_bootstrap_report.txt
         #expand("reports/{virus}_multi_split_report.txt", virus=config["viruses"])
@@ -72,9 +73,6 @@ rule matUtils:
         matUtils summary -i {output.pruned_tree} -m data/{wildcards.virus}_muts.txt -T {threads}
         """
         
-
-
-
 '''
 rule look_for_weirdmuts:
     input:
@@ -229,7 +227,7 @@ rule check_bootstraps:
         """
         mkdir -p reports
         python3 spectrumSplits/misc/process_bootstraps.py --bootstrap_directory {input.bootstrap_directory} --spectrum_file reports/{wildcards.virus}_multi_split_report.txt --output_file {output.bootstrap_report} --input_tree {input.input_tree} > {log} 2>&1
-        """
+       """
 
 
 rule visualize_splits:
