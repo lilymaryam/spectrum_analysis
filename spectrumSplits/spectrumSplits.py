@@ -131,7 +131,8 @@ def write_spectra_to_tsv(spectra_dict, filename, ntips):
                 writer.writerow(row)
             else:
                 normalized_spectrum = normalize_spectrum(spectrum)
-                row = [node.id] + [sum(spectrum.values())] + [len(tips)] + [float(sum(spectrum.values()))/float(len(tips))] + [normalized_spectrum.get(key, 0) for key in sorted_keys]
+                #divide by zero error (same guard as the ntips > 0 branch above)
+                row = [node.id] + [sum(spectrum.values())] + [len(tips)] + [float(sum(spectrum.values()))/float(len(tips)) if len(tips) > 0 else "NA"] + [normalized_spectrum.get(key, 0) for key in sorted_keys]
                 writer.writerow(row)
     print(f"Spectra written to {filename}", file=sys.stderr)
 
@@ -233,7 +234,20 @@ def find_splits(node, min_chi, min_mutations, max_branch_length, weights=None, c
                         # Append 0 if the mutation is missing from the split_root_spectrum
                         above_spectrum_list.append(0)
 
-                chi, p, dof, expected = chi2_contingency([splitroot_spectrum_list,above_spectrum_list])
+                #a mutation type with zero counts on BOTH sides carries no information, and
+                #chi2_contingency raises on it (its expected frequency would be zero, so the
+                #chi calculation would divide by zero). leaving those types out gives exactly
+                #the same chi value as treating their 0/0 term as 0, so the min_chi cutoff
+                #still applies unchanged. note the dof returned below is then 10 rather than
+                #11, but it is never read -- calculate_min_chi_value sets its own dof=11.
+                kept_columns = [i for i in range(len(splitroot_spectrum_list))
+                                if splitroot_spectrum_list[i] + above_spectrum_list[i] > 0]
+                if len(kept_columns) < 2:
+                    #fewer than two types observed at all, nothing to compare
+                    continue
+                chi, p, dof, expected = chi2_contingency([
+                    [splitroot_spectrum_list[i] for i in kept_columns],
+                    [above_spectrum_list[i] for i in kept_columns]])
                 print(chi)
                 '''
                 node_spectrum_difference = compute_spectrum_difference(
