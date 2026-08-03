@@ -8,7 +8,11 @@ def parse_metadata_file(metadata_file):
     
     # Extract the min and max values for each spectrum column (columns 3 onwards)
     spectrum_columns = df.columns[2:]  # From 3rd column to the end
-    min_max_dict = {col: {"min": df[col].min(), "max": df[col].max()} for col in spectrum_columns}
+    # cast to float: a mutation type that never occurs is written as a bare 0, so pandas
+    # types that whole column as int64 and json.dump refuses numpy ints (numpy floats are
+    # fine because they subclass float, numpy ints do not subclass int).
+    min_max_dict = {col: {"min": float(df[col].min()), "max": float(df[col].max())}
+                    for col in spectrum_columns}
     
     return min_max_dict
 

@@ -2,11 +2,18 @@ import os
 
 configfile: "config.yaml"
 
+#trees too big to finish 1000 bootstrap replicates inside the 12h medium partition.
+#these get the long partition instead. add virus names here if others time out.
+LONG_RUNNING = {"Human_immunodeficiency_virus_1"}
+
 rule all:
     input:
         expand("visuals/{virus}_split_visualization.jsonl.gz", virus=config["viruses"]),
+        expand("reports/{virus}_bootstrap_report.tsv", virus=config["viruses"]),
+        #single_split_pca takes every single split report as input, so asking for the
+        #plot pulls in reports/{virus}_single_split_report.txt for the whole config list
+        "reports/single_split_pca_better.png",
         #expand("pruned/{virus}_pruned_masked.pb.gz", virus=config["viruses"][:100])
-        #expand("reports/{virus}_bootstrap_report.tsv", virus=config["viruses"])
         #"reports/{virus}_bootstrap_report.txt
         #expand("reports/{virus}_multi_split_report.txt", virus=config["viruses"])
         #expand("reports/{virus}_single_split_report.txt", virus=config["viruses"])
@@ -167,7 +174,9 @@ rule single_split_pca:
     input:
         expand("reports/{virus}_single_split_report.txt", virus=config["viruses"]), metadata=os.path.join(config["data_dir"], "../tree_metadata.tsv")
     output:
-        pca_plot="reports/single_split_pca.png",better_pca_plot="reports/single_split_pca_better.png"
+        #pca_plot is only produced by the commented-out PCA.py step below. leaving it
+        #declared made snakemake fail the rule and delete the plot that did get made.
+        better_pca_plot="reports/single_split_pca_better.png"
     log:
         "logs/single_split_pca.log"
     resources:
@@ -187,7 +196,10 @@ rule check_multi_split_spectra:
     input:
         masked_tree="pruned/{virus}_pruned_masked.pb.gz"
     output:
-        split_report="reports/{virus}_multi_split_report.txt"
+        split_report="reports/{virus}_multi_split_report.txt",
+        #declared so snakemake knows this rule creates it and runs check_bootstraps after.
+        #note snakemake clears this directory before a rerun and on failure.
+        bootstrap_dir=directory("bootstraps/{virus}")
     params:
         bootstrap_splits=config["bootstrap_replicates"]
     threads:
@@ -196,15 +208,17 @@ rule check_multi_split_spectra:
         "logs/{virus}_check_multi_split_spectra.log"
     resources:
         mem_mb=4000,
-        runtime=720,
-        slurm_partition="medium",
+        #HIV-1 is by far the largest tree here (~1.5M mutations, ~34k tips) and needs
+        #roughly 54h for 1000 bootstrap replicates, well past the 12h medium cap.
+        runtime=lambda wildcards: 10080 if wildcards.virus in LONG_RUNNING else 720,
+        slurm_partition=lambda wildcards: "long" if wildcards.virus in LONG_RUNNING else "medium",
         #slurm_extra="--export=ALL",
     shell:
         """
         mkdir -p bootstraps
         mkdir -p bootstraps/{wildcards.virus}
         mkdir -p reports
-        python3 spectrumSplits/spectrumSplits.py --input_tree {input.masked_tree} --output_spectrum {output.split_report} --bootstrap_splits {params.bootstrap_splits} --bootstrap_dir bootstraps/{wildcards.virus} --calculate_min_chi > {log} 2>&1
+        python3 spectrumSplits/spectrumSplits.py --input_tree {input.masked_tree} --output_spectrum {output.split_report} --bootstrap_splits {params.bootstrap_splits} --bootstrap_dir bootstraps/{wildcards.virus} --nthreads {threads} --calculate_min_chi > {log} 2>&1
         """
 
 rule check_bootstraps:

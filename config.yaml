@@ -75,7 +75,6 @@ viruses:
 - Avian_orthoreovirus_AVS_B_S3
 - Avian_orthoreovirus_AVS_B_S4
 - Beak_and_feather_disease_virus
-- Betacoronavirus_England_1
 - Betapolyomavirus_hominis
 - Bluetongue_virus_1
 - Bluetongue_virus_10
@@ -152,12 +151,12 @@ viruses:
 - Hepatitis_C_virus_genotype_4
 - Hepatitis_C_virus_genotype_6
 - Hepatitis_C_virus_isolate_H77
+- hepatitis_D_virus_1
 - Hepatitis_delta_virus_dFr2005
 - Hepatitis_delta_virus_dFr2072
 - Hepatitis_delta_virus_dFr2158
 - Hepatitis_delta_virus_NC_001653_2
 - Hepatitis_delta_virus_NC_076110_1
-- hepatitis_D_virus_1
 - Hepatitis_E_virus
 - Hepatovirus_A
 - Hop_stunt_viroid
@@ -174,6 +173,7 @@ viruses:
 - Human_betaherpesvirus_5
 - Human_bocavirus_3
 - Human_coronavirus_229E
+- Human_coronavirus_HKU1
 - Human_coronavirus_NL63
 - Human_coronavirus_OC43
 - Human_gammaherpesvirus_4
@@ -181,6 +181,7 @@ viruses:
 - Human_herpesvirus_4_type_2
 - Human_immunodeficiency_virus_1
 - Human_immunodeficiency_virus_2
+- Human_mastadenovirus_A
 - Human_mastadenovirus_B_Human_adenovirus_11
 - Human_mastadenovirus_B_Human_adenovirus_3
 - Human_mastadenovirus_C
@@ -189,12 +190,13 @@ viruses:
 - Human_mastadenovirus_F
 - Human_metapneumovirus
 - Human_orthopneumovirus_B1
-- Human_orthopneumovirus_NC_038235_1
+- Human_orthorubulavirus_2
 - Human_papillomavirus_16
 - human_papillomavirus_18
 - human_papillomavirus_30
 - Human_papillomavirus_type_53
 - Human_papillomavirus_type_6b
+- Human_parainfluenza_virus_4a
 - Human_parechovirus_1
 - Human_parvovirus_B19
 - Human_respiratory_syncytial_virus_A
@@ -295,6 +297,7 @@ viruses:
 - Isavirus_salaris_6
 - Japanese_encephalitis_virus
 - JC_polyomavirus
+- Kyasanur_Forest_disease_virus
 - Lelystad_virus
 - Lumpy_skin_disease_virus_NI_2490
 - Lyssavirus_rabies
@@ -322,6 +325,7 @@ viruses:
 - Mammalian_orthoreovirus_3_S3
 - Mammalian_orthoreovirus_3_S4
 - Mammarenavirus_lassaense_L
+- Marburg_virus
 - Measles_morbillivirus
 - Middle_East_respiratory_syndrome_related_coronavirus
 - Mogiana_tick_virus_MGTV_V4_11_1
@@ -335,6 +339,8 @@ viruses:
 - Monkeypox_virus_Ia
 - Monkeypox_virus_IIb
 - Mumps_orthorubulavirus
+- Murray_Valley_encephalitis_virus
+- Nipah_virus
 - Norovirus_GI_Hu_BD_2011_GI_7_PNA2_Dhaka1882
 - Norovirus_GI_Hu_JP_1998_GI_6_PNA4_No20_Saitama_98_17
 - Norovirus_GI_Hu_JP_2007_GI_P3_GI_3_Shimizu_KK2866
@@ -356,6 +362,7 @@ viruses:
 - Oropouche_virus_L
 - Oropouche_virus_M
 - Oropouche_virus_S
+- Orthohantavirus_andesense_M
 - Orthohantavirus_hantanense_L
 - Orthohantavirus_hantanense_NC_005218_1
 - Orthohantavirus_hantanense_NC_005219_1
@@ -397,6 +404,7 @@ viruses:
 - Porcine_reproductive_and_respiratory_syndrome_virus_2
 - Potato_spindle_tuber_viroid
 - Potato_virus_Y
+- Powassan_virus
 - Primate_norovirus
 - Primate_T_lymphotropic_virus_1
 - Rabbit_hemorrhagic_disease_virus
@@ -411,6 +419,7 @@ viruses:
 - Rift_Valley_fever_virus_L
 - Rift_Valley_fever_virus_M
 - Rift_Valley_fever_virus_S
+- Ross_River_virus
 - Rotavirus_A_1
 - Rotavirus_A_10
 - Rotavirus_A_11
@@ -430,6 +439,7 @@ viruses:
 - Rotavirus_C_9
 - Rubella_virus_F_Therien
 - Rubella_virus_RVi_Bismarck_ND_USA_23_08_2B
+- Saint_Louis_encephalitis_virus
 - Sapovirus_C12
 - Sapovirus_Hu_Dresden_pJG_Sap01_DE
 - Sapovirus_Hu_GI_Sapporo_MT_2010_1982
@@ -443,6 +453,8 @@ viruses:
 - Simian_adenovirus_21
 - Simian_adenovirus_25
 - Simian_Agent_10
+- Sindbis_virus
+- Sudan_ebolavirus
 - Sugarcane_mosaic_virus
 - Suid_alphaherpesvirus_1_Composite_of_6_strains
 - Suid_alphaherpesvirus_1_Kaplan
@@ -457,10 +469,12 @@ viruses:
 - Turnip_mosaic_virus
 - Usutu_virus
 - Varroa_destructor_virus_1
+- Venezuelan_equine_encephalitis_virus
 - Viral_hemorrhagic_septicemia_virus_Fil3
 - Watermelon_mosaic_virus
 - West_Nile_virus_385_99
 - West_Nile_virus_956
+- WU_Polyomavirus
 - Yellow_fever_virus
 - Zaire_ebolavirus
 - Zika_virus_MR_766
