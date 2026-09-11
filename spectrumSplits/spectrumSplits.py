@@ -25,8 +25,20 @@ def parse_args():
     parser.add_argument("--max_branch_length", type=int, default=100000, help="Maximum branch length to include in spectrum calculations")
     parser.add_argument("--bootstrap_dir", type=str, default=".", help="Directory to write bootstrap output files")
     parser.add_argument("--calculate_min_chi", action="store_true", help="Option to calculate minimum chi-square value based on tree size")
+    parser.add_argument("--subsample_mutations", type=int, default=-10, help="Number of mutations to subsample to before spectra calculation. Negative values indicate no subsampling.")
     #parser.add_argument("--aplha", type=int, default=42, help="Random seed for reproducibility
     return parser.parse_args()
+
+def calculate_min_mutations(tree):
+    # Calculate the total number of mutations in the tree
+    total_mutations = tree.count_mutation_types()
+    total = sum(total_mutations.values())
+    tips = tree.get_leaves()
+    print(len(tips))
+    print(total/len(tips))
+    # Set the minimum number of mutations to 1% of the total mutations, rounded up
+    #min_mutations = max(1, int(total_mutations * 0.01))
+    #return min_mutations
 
 ### mutation positions 
 def get_positions( node ) :
@@ -84,6 +96,8 @@ def compute_mutation_spectrum(node, stop_nodes, spectrum_dict, weights=None, max
     #populate spectrum dict
     spectrum_dict[node] = local_spectrum
     return local_spectrum
+
+#def compute_four_fold_spectrum(node, stop_nodes, spectrum_dict, weights=None, max_branch_length=100000):
 
 def compute_spectrum_difference(spectrum1, spectrum2):
     difference_spectrum = defaultdict(int)
@@ -347,6 +361,8 @@ def main():
     tree = bte.MATree(args.input_tree)
     nodes = [n for n in tree.breadth_first_expansion()]
 
+    #calculate_min_mutations(tree)
+    
     ### go through and do the real run without weighting mutations 
     finalized_splits = find_splits(tree.root, args.min_chi, args.min_mutations, args.max_branch_length, calculate_min_chi=args.calculate_min_chi, tree_size=len(nodes) )
     spectra = get_spectra(finalized_splits, args.max_branch_length )
@@ -362,6 +378,6 @@ def main():
     if ( args.bootstrap_spectra > 0 ) :
         print(f"Bootstrapping spectra with {args.bootstrap_spectra} replicates using {args.nthreads} threads.", file=sys.stderr)
         run_bootstrap_spectra( tree, args.bootstrap_spectra, args.nthreads, finalized_splits, args.max_branch_length, args.bootstrap_dir )
-
+    
 if __name__ == "__main__":
     main()
